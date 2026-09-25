@@ -1,0 +1,49 @@
+# -----------------------------------------------------------------------------
+# processor-service: consume orders.created, "prepara" el pedido y emite orders.completed.
+# -----------------------------------------------------------------------------
+[project]
+name = "processor-service"
+version = "1.0.0"
+description = "Procesa pedidos (consumidor idempotente con reintentos) y publica orders.completed"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "cafe-common[sql]",               # librería compartida (ruta local, ver abajo)
+    "fastapi>=0.115,<1",               # framework web async
+    "uvicorn[standard]>=0.32,<1",      # servidor ASGI (uvloop/httptools)
+    "pydantic-settings>=2.6,<3",       # configuración desde variables de entorno
+    "sqlalchemy[asyncio]>=2.0.36,<3",  # ORM asíncrono
+    "asyncpg>=0.30,<1",                # driver PostgreSQL asíncrono
+]
+
+[tool.poetry]
+package-mode = false  # es una aplicación, no una librería publicable
+
+[tool.poetry.dependencies]
+# "Enriquece" la dependencia declarada arriba indicando que viene de una ruta
+# local del monorepo. develop=true: los cambios en ../shared se ven al momento.
+cafe-common = { path = "../shared", develop = true, extras = ["sql"] }
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3"
+pytest-asyncio = ">=0.24"
+httpx = ">=0.28"      # cliente HTTP para probar la API en proceso
+aiosqlite = ">=0.20"  # SQLite asíncrono: BD real y efímera para los tests
+ruff = ">=0.8"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]  # permite "import app" desde los tests
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.ruff.lint.isort]
+# "alembic/" es una carpeta local, pero el paquete alembic es de terceros.
+known-third-party = ["alembic"]
+known-first-party = ["app", "cafe_common"]

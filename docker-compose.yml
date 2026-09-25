@@ -1,0 +1,200 @@
+# =============================================================================
+# Café Cloud — entorno local completo y autocontenido.
+#
+#   docker compose up --build            # levanta todo
+#   docker compose --profile test run --rm integration-tests   # test E2E
+#
+# Todas las variables tienen un valor por defecto LOCAL (sintaxis ${VAR:-def}),
+# así el sistema arranca sin crear ningún archivo. Para cambiarlas, copia
+# .env.example a .env (docker compose lo lee automáticamente).
+# =============================================================================
+name: cafe-cloud
+
+# Bloques reutilizables (anclas YAML) para no repetir configuración.
+x-app-env: &app-env
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  REDIS_URL: redis://redis:6379/0
+  API_KEY: ${API_KEY:-cafe-cloud-dev-key}
+
+x-database-url: &database-url
+  DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-cafe}:${POSTGRES_PASSWORD:-cafe_local_password}@postgres:5432/${POSTGRES_DB:-cafe_orders}
+
+x-mongo-url: &mongo-url
+  MONGO_URL: mongodb://${MONGO_USER:-cafe}:${MONGO_PASSWORD:-cafe_local_password}@mongo:27017/?authSource=admin
+
+# Health check HTTP con Python (las imágenes slim no traen curl).
+x-http-healthcheck: &http-healthcheck
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+  interval: 10s
+  timeout: 5s
+  retries: 12
+  start_period: 10s
+
+services:
+  # --------------------------------------------------------------- infraestructura
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cafe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cafe_local_password}
+      POSTGRES_DB: ${POSTGRES_DB:-cafe_orders}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    # appendonly: persiste los streams en disco (AOF) -> no se pierden mensajes
+    # si Redis se reinicia.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-cafe}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-cafe_local_password}
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # -------------------------------------------------- migraciones + datos semilla
+  # Contenedor de un solo uso: aplica Alembic y el seed y termina. Los servicios
+  # que usan PostgreSQL esperan a que termine con éxito.
+  migrate:
+    build:
+      context: .
+      dockerfile: orders-service/Dockerfile
+      target: runtime
+    command: ["sh", "-c", "alembic upgrade head && python -m app.seed"]
+    environment:
+      <<: [*app-env, *database-url]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # ------------------------------------------------------------------ servicios
+  orders-service:
+    build:
+      context: .
+      dockerfile: orders-service/Dockerfile
+      target: runtime
+    environment:
+      <<: [*app-env, *database-url]
+      SERVICE_NAME: orders-service
+    ports:
+      - "8001:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck: *http-healthcheck
+    restart: unless-stopped
+
+  processor-service:
+    build:
+      context: .
+      dockerfile: processor-service/Dockerfile
+      target: runtime
+    environment:
+      <<: [*app-env, *database-url]
+      SERVICE_NAME: processor-service
+      PROCESSING_MIN_SECONDS: ${PROCESSING_MIN_SECONDS:-2}
+      PROCESSING_MAX_SECONDS: ${PROCESSING_MAX_SECONDS:-5}
+      # Pon p. ej. 0.3 para ver reintentos con backoff en los logs.
+      PROCESSING_FAILURE_RATE: ${PROCESSING_FAILURE_RATE:-0}
+    ports:
+      - "8002:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck: *http-healthcheck
+    restart: unless-stopped
+
+  notifier-service:
+    build:
+      context: .
+      dockerfile: notifier-service/Dockerfile
+      target: runtime
+    environment:
+      <<: [*app-env, *mongo-url]
+      SERVICE_NAME: notifier-service
+    ports:
+      - "8003:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck: *http-healthcheck
+    restart: unless-stopped
+
+  cleanup-job:
+    build:
+      context: .
+      dockerfile: cleanup-job/Dockerfile
+      target: runtime
+    environment:
+      <<: [*app-env, *mongo-url]
+      SERVICE_NAME: cleanup-job
+      RETENTION_HOURS: ${CLEANUP_RETENTION_HOURS:-24}
+      INTERVAL_SECONDS: ${CLEANUP_INTERVAL_SECONDS:-60}
+    ports:
+      - "8004:8000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck: *http-healthcheck
+    restart: unless-stopped
+
+  # ----------------------------------------------- tests E2E (perfil opcional)
+  # No arranca con "docker compose up"; solo con --profile test.
+  integration-tests:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: tests/Dockerfile
+    environment:
+      ORDERS_URL: http://orders-service:8000
+      NOTIFIER_URL: http://notifier-service:8000
+      CLEANUP_URL: http://cleanup-job:8000
+      API_KEY: ${API_KEY:-cafe-cloud-dev-key}
+    depends_on:
+      orders-service:
+        condition: service_healthy
+      processor-service:
+        condition: service_healthy
+      notifier-service:
+        condition: service_healthy
+      cleanup-job:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  mongo-data:

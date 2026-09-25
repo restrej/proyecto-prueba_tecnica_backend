@@ -1,0 +1,17 @@
+# -----------------------------------------------------------------------------
+# Tests de integración end-to-end (caja negra, vía HTTP contra el stack real).
+# -----------------------------------------------------------------------------
+[project]
+name = "cafe-cloud-integration-tests"
+version = "1.0.0"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.pytest.ini_options]
+testpaths = ["integration"]

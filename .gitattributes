@@ -1,0 +1,4 @@
+# Finales de línea LF en el repositorio: el código se ejecuta en contenedores
+# Linux y el Makefile/Dockerfiles fallan con CRLF.
+* text=auto eol=lf
+*.ps1 text eol=crlf

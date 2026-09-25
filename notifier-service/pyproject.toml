@@ -1,0 +1,45 @@
+# -----------------------------------------------------------------------------
+# notifier-service: consume orders.completed y guarda notificaciones en MongoDB.
+# -----------------------------------------------------------------------------
+[project]
+name = "notifier-service"
+version = "1.0.0"
+description = "Crea notificaciones (MongoDB) al completarse un pedido y las expone por HTTP"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "cafe-common",                    # librería compartida (sin el extra sql)
+    "fastapi>=0.115,<1",              # framework web async
+    "uvicorn[standard]>=0.32,<1",     # servidor ASGI
+    "pydantic-settings>=2.6,<3",      # configuración desde variables de entorno
+    "pymongo>=4.10,<5",               # driver MongoDB (incluye AsyncMongoClient)
+]
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+cafe-common = { path = "../shared", develop = true }
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3"
+pytest-asyncio = ">=0.24"
+httpx = ">=0.28"
+ruff = ">=0.8"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.ruff.lint.isort]
+# "alembic/" es una carpeta local, pero el paquete alembic es de terceros.
+known-third-party = ["alembic"]
+known-first-party = ["app", "cafe_common"]
