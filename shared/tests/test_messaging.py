@@ -49,6 +49,7 @@ async def test_published_event_is_consumed_and_acked(redis: FakeAsyncRedis) -> N
     received: list[EventEnvelope] = []
 
     async def handler(envelope: EventEnvelope) -> None:
+        """Handler de prueba: guarda cada envelope recibido para comprobarlo después."""
         received.append(envelope)
 
     consumer = RedisStreamConsumer(redis, _settings(), handler)
@@ -67,6 +68,7 @@ async def test_transient_failures_are_retried(redis: FakeAsyncRedis) -> None:
     attempts = 0
 
     async def flaky(_: EventEnvelope) -> None:
+        """Handler que falla en el primer intento (error transitorio) y acierta en el segundo."""
         nonlocal attempts
         attempts += 1
         if attempts == 1:
@@ -88,9 +90,11 @@ async def test_permanent_failure_goes_to_dead_letter_and_hook_runs(
     hooked: list[str] = []
 
     async def broken(_: EventEnvelope) -> None:
+        """Handler que siempre lanza un error permanente (no reintentable)."""
         raise PermanentError("cannot process")
 
     async def on_dead_letter(envelope: EventEnvelope, _: BaseException) -> None:
+        """Hook de dead-letter: anota el trace_id del mensaje enviado a la DLQ."""
         hooked.append(envelope.trace_id)
 
     consumer = RedisStreamConsumer(redis, _settings(), broken, on_dead_letter=on_dead_letter)
@@ -109,6 +113,7 @@ async def test_malformed_message_goes_to_dead_letter(redis: FakeAsyncRedis) -> N
     """Un mensaje sin envelope válido no llega al handler y va a la DLQ."""
 
     async def handler(_: EventEnvelope) -> None:  # pragma: no cover - no se llama
+        """Handler que no debe ejecutarse: el mensaje malformado se descarta antes."""
         raise AssertionError("handler must not be called")
 
     consumer = RedisStreamConsumer(redis, _settings(), handler)
@@ -124,6 +129,7 @@ async def test_orphan_message_is_reclaimed_by_another_consumer(redis: FakeAsyncR
     received: list[EventEnvelope] = []
 
     async def handler(envelope: EventEnvelope) -> None:
+        """Handler de prueba: guarda cada envelope recibido para comprobarlo después."""
         received.append(envelope)
 
     await RedisStreamPublisher(redis).publish(STREAM, _envelope())
