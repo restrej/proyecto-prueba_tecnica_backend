@@ -1,0 +1,52 @@
+# -----------------------------------------------------------------------------
+# cafe-common: librería interna compartida por todos los microservicios.
+#
+# Contiene SOLO piezas transversales (cross-cutting concerns): logging JSON,
+# propagación de trace_id, contrato de eventos, reintentos con backoff,
+# mensajería sobre Redis Streams, métricas/health y el esquema SQL de pedidos.
+# La lógica de negocio de cada servicio NO vive aquí.
+# -----------------------------------------------------------------------------
+[project]
+name = "cafe-common"
+version = "1.0.0"
+description = "Utilidades compartidas (eventos, mensajería, observabilidad) de Café Cloud"
+requires-python = ">=3.11,<4.0"
+# Dependencias mínimas que necesita cualquier servicio que use la librería.
+dependencies = [
+    "pydantic>=2.9,<3",            # validación/serialización de eventos
+    "redis>=5.2,<9",               # cliente asíncrono de Redis (Streams)
+    "prometheus-client>=0.21,<1",  # métricas en formato Prometheus
+    "fastapi>=0.115,<1",           # middleware, router de health y API key
+]
+
+[project.optional-dependencies]
+# Extra "sql": solo lo instalan los servicios que tocan PostgreSQL
+# (orders-service y processor-service). notifier y cleanup no lo necesitan.
+sql = ["sqlalchemy[asyncio]>=2.0.36,<3"]
+
+[tool.poetry]
+# Le indica a Poetry qué paquete Python contiene este proyecto.
+packages = [{ include = "cafe_common" }]
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3"
+pytest-asyncio = ">=0.24"
+fakeredis = ">=2.26"   # Redis en memoria para probar Streams sin servidor real
+httpx = ">=0.28"       # cliente HTTP en proceso para probar el middleware
+ruff = ">=0.8"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"               # los tests async se ejecutan sin decorador
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

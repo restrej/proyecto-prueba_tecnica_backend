@@ -1,0 +1,22 @@
+# Entornos virtuales y cachés de Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Configuración local con posibles secretos
+.env
+
+# Bases de datos locales de pruebas
+*.db
+*.sqlite3
+
+# IDEs / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

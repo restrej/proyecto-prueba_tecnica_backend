@@ -1,0 +1,11 @@
+# Archivos que NO se envían al contexto de build de Docker.
+# Evita copiar entornos virtuales locales (pesados y de otro SO), cachés y git.
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+.git
+.env
+docs
