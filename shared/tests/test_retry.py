@@ -38,6 +38,7 @@ async def test_retry_succeeds_after_transient_failures() -> None:
     sleep = _FakeSleep()
 
     async def flaky() -> str:
+        """Operación que falla dos veces con un error transitorio y acierta a la tercera."""
         nonlocal calls
         calls += 1
         if calls < 3:
@@ -55,6 +56,7 @@ async def test_retry_gives_up_after_max_attempts() -> None:
     sleep = _FakeSleep()
 
     async def always_fails() -> None:
+        """Operación que siempre falla con un error transitorio."""
         raise ConnectionError("down")
 
     with pytest.raises(RetryExhaustedError) as info:
@@ -68,6 +70,7 @@ async def test_permanent_error_is_not_retried() -> None:
     sleep = _FakeSleep()
 
     async def invalid() -> None:
+        """Operación que falla con un error permanente (no debe reintentarse)."""
         raise PermanentError("bad payload")
 
     with pytest.raises(PermanentError):

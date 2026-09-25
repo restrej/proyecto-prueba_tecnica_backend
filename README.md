@@ -27,6 +27,7 @@ docker compose up --build
 8. [Configuración](#8-configuración)
 9. [Estructura del repositorio](#9-estructura-del-repositorio)
 10. [Resolución de problemas](#10-resolución-de-problemas)
+11. [Cumplimiento de requisitos de la prueba](#11-cumplimiento-de-requisitos-de-la-prueba)
 
 ---
 
@@ -534,3 +535,33 @@ cafe-cloud/
 | Quiero empezar de cero | `make clean && make up` (borra volúmenes) |
 | El test E2E se salta (`skipped`) | El sistema no está levantado: `docker compose up -d` y repite |
 | `make` no existe (Windows) | Usa `.\scripts\tasks.ps1 <tarea>` |
+| `make` no existe (Ubuntu/Debian) | `sudo apt install -y make` |
+| `permission denied ... docker.sock` (Linux) | `sudo usermod -aG docker $USER` y cierra sesión (o `newgrp docker`) |
+
+---
+
+## 11. Cumplimiento de requisitos de la prueba
+
+Correspondencia entre cada requisito del enunciado y dónde está implementado.
+La explicación detallada, archivo por archivo, está en
+[`docs/EXPLICACION_DETALLADA.md`](docs/EXPLICACION_DETALLADA.md).
+
+| Requisito del enunciado | Implementación |
+|---|---|
+| `POST /orders` valida, guarda en SQL y devuelve `order_id`, `status`, `created_at` | `orders-service/app/schemas.py`, `app/services.py`, `app/api/routes.py` |
+| Tabla `orders (id, customer_id, status, created_at)` | `shared/cafe_common/db/models.py` + migración Alembic `orders-service/alembic/versions/` |
+| Publicar `orders.created` en un broker | Transactional Outbox (`shared/cafe_common/db/outbox.py`) → Redis Streams (`shared/cafe_common/messaging.py`) |
+| Idempotencia con `Idempotency-Key` | Tabla `idempotency_keys` + `OrderService.create_order` |
+| processor: escucha, simula 2–5 s, marca `COMPLETED`, publica `orders.completed` | `processor-service/app/handlers.py` |
+| Reintentos con backoff exponencial | `shared/cafe_common/retry.py` (+ DLQ en `messaging.py`) |
+| Consumidor idempotente | Tabla inbox `processed_events` (processor) y `_id = event_id` en MongoDB (notifier) |
+| Logs estructurados con `trace_id` propagado | `shared/cafe_common/logs.py`, `tracing.py`; el `trace_id` viaja en el envelope del evento |
+| notifier: guarda en NoSQL y expone `GET /notifications/{customer_id}` | `notifier-service/app/repository.py`, `app/api.py` (MongoDB) |
+| cleanup-job periódico que borra > 24 h y lo registra en logs | `cleanup-job/app/service.py` + APScheduler en `app/main.py`; `POST /jobs/cleanup/run` |
+| Python 3.11+, Poetry, Dockerfile por servicio | `pyproject.toml` + `poetry.lock` y `Dockerfile` en cada servicio (imágenes Python 3.12) |
+| Docker Compose autocontenido (`docker compose up --build`) | `docker-compose.yml` con valores locales por defecto (`${VAR:-default}`) |
+| Migraciones (Alembic) y datos semilla | `orders-service/alembic/`, `orders-service/app/seed.py` (servicio `migrate`) |
+| Tests: ≥1 unitario por servicio y 1 de integración | `*/tests/` y `tests/integration/test_full_flow.py` |
+| `GET /health` y `GET /metrics` | `shared/cafe_common/observability.py` (en los 4 servicios) |
+| API key (plus) y credenciales no *hardcodeadas* | `shared/cafe_common/security.py` (`X-API-Key`); credenciales por variables de entorno |
+| Automatización build/test/deploy | `Makefile` (Linux/macOS) y `scripts/tasks.ps1` (Windows) |

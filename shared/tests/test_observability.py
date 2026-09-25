@@ -16,6 +16,7 @@ def _app() -> FastAPI:
 
     @router.get("/{item_id}")
     async def get_item(item_id: str) -> dict[str, str]:
+        """Endpoint mínimo para probar el middleware de observabilidad."""
         return {"id": item_id}
 
     app.include_router(router)
