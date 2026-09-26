@@ -13,7 +13,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from redis.asyncio import Redis
 
 from app.config import Settings, get_settings
 from app.handlers import OrderProcessor
@@ -22,7 +21,12 @@ from cafe_common.db.session import create_engine, create_session_factory, ping_d
 from cafe_common.events import Streams
 from cafe_common.lifecycle import BackgroundWorkers
 from cafe_common.logs import configure_logging
-from cafe_common.messaging import ConsumerSettings, RedisStreamConsumer, RedisStreamPublisher
+from cafe_common.messaging import (
+    ConsumerSettings,
+    RedisStreamConsumer,
+    RedisStreamPublisher,
+    create_redis_client,
+)
 from cafe_common.observability import setup_observability
 
 
@@ -43,7 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         """Crea conexiones, arranca los workers y los detiene al apagar."""
         engine = create_engine(settings.database_url)
         session_factory = create_session_factory(engine)
-        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        redis = create_redis_client(settings.redis_url, block_ms=settings.consumer_block_ms)
         app.state.engine = engine
         app.state.redis = redis
 

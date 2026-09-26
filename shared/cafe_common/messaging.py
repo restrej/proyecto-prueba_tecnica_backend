@@ -13,6 +13,7 @@
 
 Este módulo ofrece:
 
+* :func:`create_redis_client`   -> cliente Redis con timeouts coherentes.
 * :class:`RedisStreamPublisher` -> ``XADD`` de un :class:`EventEnvelope`.
 * :class:`RedisStreamConsumer`  -> bucle ``XREADGROUP`` + reintentos + ``XACK``
   + reclamación de mensajes huérfanos + *dead letter queue*.
@@ -52,6 +53,43 @@ EventHandler = Callable[[EventEnvelope], Awaitable[None]]
 DeadLetterHook = Callable[[EventEnvelope, BaseException], Awaitable[None]]
 # Un mensaje de Redis Streams: (id, {campo: valor}).
 StreamMessage = tuple[str, dict[str, str]]
+
+
+# Timeout de lectura del socket (segundos) para comandos normales. redis-py 8
+# aplica 5 s por defecto aunque no se indique nada.
+DEFAULT_SOCKET_TIMEOUT_SECONDS = 5.0
+# Margen extra sobre el bloqueo de XREADGROUP: la respuesta vacía del servidor
+# llega justo al terminar el bloqueo y necesita un poco de tiempo para viajar.
+BLOCK_TIMEOUT_MARGIN_SECONDS = 5.0
+
+
+def create_redis_client(url: str, *, block_ms: int | None = None) -> Redis:
+    """Crea el cliente Redis asíncrono con timeouts coherentes (patrón *factory*).
+
+    Un consumidor hace ``XREADGROUP BLOCK <block_ms>``: el servidor deja la
+    conexión en espera hasta ``block_ms`` si no hay mensajes. Si el timeout de
+    lectura del socket es menor o igual que ese bloqueo, el cliente corta la
+    espera con ``TimeoutError``; el consumidor lo interpretaría como "Redis
+    caído" y aplicaría backoff (hasta 30 s), retrasando los pedidos nuevos.
+    Por eso el timeout del socket se fija siempre por encima del bloqueo.
+
+    Args:
+        url: URL de conexión, p. ej. ``redis://redis:6379/0``.
+        block_ms: bloqueo de ``XREADGROUP`` en milisegundos, o ``None`` si el
+            cliente no consume streams (solo publica).
+
+    Returns:
+        Cliente ``Redis`` que devuelve ``str`` en lugar de ``bytes``.
+    """
+    socket_timeout = DEFAULT_SOCKET_TIMEOUT_SECONDS
+    if block_ms is not None:
+        socket_timeout = max(socket_timeout, block_ms / 1000 + BLOCK_TIMEOUT_MARGIN_SECONDS)
+    return Redis.from_url(
+        url,
+        decode_responses=True,  # respuestas como str (los envelopes son texto)
+        socket_timeout=socket_timeout,  # > bloqueo de XREADGROUP
+        socket_connect_timeout=DEFAULT_SOCKET_TIMEOUT_SECONDS,  # conexión inicial
+    )
 
 
 def encode_envelope(envelope: EventEnvelope) -> dict[str, str]:

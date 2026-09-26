@@ -8,7 +8,6 @@ from typing import Any
 
 from fastapi import FastAPI
 from pymongo import AsyncMongoClient
-from redis.asyncio import Redis
 
 from app.api import router
 from app.config import Settings, get_settings
@@ -17,7 +16,7 @@ from app.repository import MongoNotificationRepository
 from cafe_common.events import Streams
 from cafe_common.lifecycle import BackgroundWorkers
 from cafe_common.logs import configure_logging
-from cafe_common.messaging import ConsumerSettings, RedisStreamConsumer
+from cafe_common.messaging import ConsumerSettings, RedisStreamConsumer, create_redis_client
 from cafe_common.observability import setup_observability
 
 
@@ -43,7 +42,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         collection = mongo[settings.mongo_database][settings.mongo_collection]
         repository = MongoNotificationRepository(collection)
         await repository.ensure_indexes()
-        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        redis = create_redis_client(settings.redis_url, block_ms=settings.consumer_block_ms)
 
         app.state.mongo = mongo
         app.state.redis = redis

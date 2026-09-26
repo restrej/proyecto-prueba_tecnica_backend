@@ -11,7 +11,12 @@ import pytest
 from fakeredis import FakeAsyncRedis
 
 from cafe_common.events import EventEnvelope, dead_letter_stream
-from cafe_common.messaging import ConsumerSettings, RedisStreamConsumer, RedisStreamPublisher
+from cafe_common.messaging import (
+    ConsumerSettings,
+    RedisStreamConsumer,
+    RedisStreamPublisher,
+    create_redis_client,
+)
 from cafe_common.retry import PermanentError, RetryPolicy
 
 STREAM = "test.stream"
@@ -142,3 +147,22 @@ async def test_orphan_message_is_reclaimed_by_another_consumer(redis: FakeAsyncR
     assert await alive.poll_once() == 1
     assert len(received) == 1
     assert (await redis.xpending(STREAM, "g"))["pending"] == 0
+
+
+def test_redis_client_socket_timeout_exceeds_block() -> None:
+    """El timeout del socket supera el bloqueo de XREADGROUP.
+
+    Regresión: con redis-py 8 el timeout por defecto (5 s) era igual al
+    bloqueo (5 s); cada espera sin mensajes acababa en TimeoutError y el
+    consumidor entraba en backoff, retrasando los pedidos hasta 30 s.
+    """
+    client = create_redis_client("redis://localhost:6379/0", block_ms=5_000)
+    kwargs = client.connection_pool.connection_kwargs
+    assert kwargs["socket_timeout"] > 5.0
+    assert kwargs["decode_responses"] is True
+
+
+def test_redis_client_without_block_uses_default_timeout() -> None:
+    """Un cliente que solo publica usa el timeout por defecto."""
+    client = create_redis_client("redis://localhost:6379/0")
+    assert client.connection_pool.connection_kwargs["socket_timeout"] == 5.0

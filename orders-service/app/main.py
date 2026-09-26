@@ -14,7 +14,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from redis.asyncio import Redis
 
 from app.api.routes import register_exception_handlers, router
 from app.config import Settings, get_settings
@@ -23,7 +22,7 @@ from cafe_common.db.session import create_engine, create_session_factory, ping_d
 from cafe_common.events import Streams
 from cafe_common.lifecycle import BackgroundWorkers
 from cafe_common.logs import configure_logging
-from cafe_common.messaging import RedisStreamPublisher
+from cafe_common.messaging import RedisStreamPublisher, create_redis_client
 from cafe_common.observability import setup_observability
 
 
@@ -47,7 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lo posterior, al recibir SIGTERM (``docker compose down``).
         """
         engine = create_engine(settings.database_url)  # pool de conexiones SQL
-        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        redis = create_redis_client(settings.redis_url)
         app.state.engine = engine
         app.state.session_factory = create_session_factory(engine)
         app.state.redis = redis
