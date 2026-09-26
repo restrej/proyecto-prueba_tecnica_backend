@@ -194,6 +194,46 @@ services:
       cleanup-job:
         condition: service_healthy
 
+  # ------------------------------------ visores web de datos (perfil opcional)
+  # No arrancan con "docker compose up"; solo con:  make tools
+  # (docker compose --profile tools up -d). Sirven para VER las bases de datos
+  # desde el navegador. Solo para desarrollo local.
+  adminer:                      # PostgreSQL -> http://localhost:8080
+    profiles: ["tools"]
+    image: adminer:4
+    # Escucha en IPv4 (la imagen usa [::] y falla en equipos sin IPv6).
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "/var/www/html"]
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mongo-express:                # MongoDB -> http://localhost:8081
+    profiles: ["tools"]
+    image: mongo-express:1
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_USER:-cafe}:${MONGO_PASSWORD:-cafe_local_password}@mongo:27017/?authSource=admin
+      ME_CONFIG_BASICAUTH: "false"
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  redis-commander:              # Redis Streams -> http://localhost:8082
+    profiles: ["tools"]
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "${REDIS_COMMANDER_PORT:-8082}:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+
 volumes:
   postgres-data:
   redis-data:

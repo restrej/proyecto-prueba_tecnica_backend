@@ -50,7 +50,9 @@ def _stack_running() -> None:
     """Salta todos los tests del módulo si el stack no está disponible."""
     for url in (ORDERS_URL, NOTIFIER_URL):
         if not _wait_until_healthy(url):
-            pytest.skip(f"el servicio {url} no responde; ejecuta primero `docker compose up`")
+            pytest.skip(
+                f"el servicio {url} no responde; ejecuta primero `docker compose up`"
+            )
 
 
 def _poll(fetch, predicate, timeout: float = TIMEOUT_SECONDS):  # type: ignore[no-untyped-def]
@@ -66,13 +68,18 @@ def _poll(fetch, predicate, timeout: float = TIMEOUT_SECONDS):  # type: ignore[n
         if predicate(last):
             return last
         time.sleep(1)
-    raise AssertionError(f"la condición no se cumplió en {timeout}s; último valor: {last!r}")
+    raise AssertionError(
+        f"la condición no se cumplió en {timeout}s; último valor: {last!r}"
+    )
 
 
 def test_order_flows_end_to_end_until_notification() -> None:
     """Pedido -> procesado -> notificación, con idempotencia y trace_id propagado."""
     customer_id = f"e2e-{uuid.uuid4().hex[:10]}"
-    body = {"customer_id": customer_id, "items": [{"name": "latte", "qty": 1}, {"name": "muffin", "qty": 2}]}
+    body = {
+        "customer_id": customer_id,
+        "items": [{"name": "latte", "qty": 1}, {"name": "muffin", "qty": 2}],
+    }
     headers = {**HEADERS, "Idempotency-Key": str(uuid.uuid4())}
 
     # 1) Crear el pedido.
@@ -89,14 +96,18 @@ def test_order_flows_end_to_end_until_notification() -> None:
 
     # 3) processor-service lo completa (consistencia eventual).
     detail = _poll(
-        lambda: httpx.get(f"{ORDERS_URL}/orders/{order['order_id']}", headers=HEADERS).json(),
+        lambda: httpx.get(
+            f"{ORDERS_URL}/orders/{order['order_id']}", headers=HEADERS
+        ).json(),
         lambda d: d.get("status") == "COMPLETED",
     )
     assert detail["completed_at"] is not None
 
     # 4) notifier-service crea UNA notificación, consultable por cliente.
     notifications = _poll(
-        lambda: httpx.get(f"{NOTIFIER_URL}/notifications/{customer_id}", headers=HEADERS).json(),
+        lambda: httpx.get(
+            f"{NOTIFIER_URL}/notifications/{customer_id}", headers=HEADERS
+        ).json(),
         lambda items: len(items) >= 1,
     )
     assert len(notifications) == 1  # el reintento del paso 2 no generó otra
@@ -109,7 +120,9 @@ def test_order_flows_end_to_end_until_notification() -> None:
 def test_manual_cleanup_endpoint_keeps_recent_notifications() -> None:
     """El job manual responde y no borra notificaciones recientes (< 24 h)."""
     try:
-        response = httpx.post(f"{CLEANUP_URL}/jobs/cleanup/run", headers=HEADERS, timeout=10)
+        response = httpx.post(
+            f"{CLEANUP_URL}/jobs/cleanup/run", headers=HEADERS, timeout=10
+        )
     except httpx.HTTPError:
         pytest.skip("cleanup-job no responde")
     assert response.status_code == 200

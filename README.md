@@ -361,6 +361,9 @@ inserción en `processed_events` y evento `orders.completed` en **una** transacc
 * Protección contra *poison messages*: si un mensaje se ha entregado más de
   `CONSUMER_MAX_DELIVERIES` veces (el proceso muere al tratarlo), va directo a la DLQ.
 * El bucle del consumidor sobrevive a caídas de Redis (backoff y reconexión).
+* El timeout del socket de Redis se fija **por encima** del bloqueo de `XREADGROUP`
+  (`create_redis_client`). Si fueran iguales, cada espera sin mensajes acabaría en
+  `TimeoutError`, se confundiría con "Redis caído" y el backoff retrasaría los pedidos nuevos.
 
 ### Consistencia eventual
 
@@ -471,6 +474,9 @@ Todos los eventos comparten un *envelope*. En Redis se guardan los campos `event
 * **`GET /metrics`** en formato Prometheus: `http_requests_total`,
   `http_request_duration_seconds`, `events_published_total`, `events_consumed_total{result}`
   (`success`/`duplicate`/`dead_letter`), `cleanup_runs_total`, `cleanup_deleted_notifications_total`.
+* **Visores web de datos** (perfil opcional `tools`, solo desarrollo): `make tools` levanta
+  Adminer (PostgreSQL, http://localhost:8080), mongo-express (MongoDB, http://localhost:8081) y
+  redis-commander (Redis Streams, http://localhost:8082). No arrancan con `docker compose up`.
 
 ---
 

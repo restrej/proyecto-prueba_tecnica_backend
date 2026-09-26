@@ -14,7 +14,7 @@ CLEANUP  ?= http://localhost:8004
 
 .DEFAULT_GOAL := help
 .PHONY: help env build up down restart logs ps migrate seed install test test-unit \
-        test-unit-docker test-integration lint format demo clean
+        test-unit-docker test-integration lint format demo tools tools-down clean
 
 help: ## Muestra esta ayuda
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -86,5 +86,16 @@ demo: ## Recorre el flujo completo con curl (requiere `make up`)
 	@echo "3) GET /notifications/abc123"
 	@curl -s -H "X-API-Key: $(API_KEY)" $(NOTIFIER)/notifications/abc123; echo
 
+# ---------------------------------------------------- visores web de datos
+tools: ## Abre visores web: Adminer :8080, mongo-express :8081, Redis :8082
+	$(COMPOSE) --profile tools up -d adminer mongo-express redis-commander
+	@echo "PostgreSQL (Adminer):      http://localhost:8080"
+	@echo "   Sistema: PostgreSQL | Servidor: postgres | Usuario: cafe | Contraseña: cafe_local_password | Base de datos: cafe_orders"
+	@echo "MongoDB (mongo-express):   http://localhost:8081  -> base de datos 'cafe_notifications'"
+	@echo "Redis (redis-commander):   http://localhost:8082"
+
+tools-down: ## Apaga los visores web de datos
+	$(COMPOSE) --profile tools stop adminer mongo-express redis-commander
+
 clean: ## Detiene todo y BORRA volúmenes (datos) e imágenes locales
-	$(COMPOSE) --profile test down -v --rmi local
+	$(COMPOSE) --profile test --profile tools down -v --rmi local

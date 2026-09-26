@@ -10,7 +10,7 @@
 param(
     [Parameter(Position = 0)]
     [ValidateSet("help", "up", "down", "logs", "ps", "migrate", "seed", "test-unit",
-                 "test-unit-docker", "test-integration", "lint", "demo", "clean")]
+                 "test-unit-docker", "test-integration", "lint", "demo", "tools", "tools-down", "clean")]
     [string]$Task = "help"
 )
 
@@ -68,5 +68,12 @@ switch ($Task) {
         Invoke-RestMethod -Uri "http://localhost:8003/notifications/abc123" `
             -Headers @{ "X-API-Key" = $ApiKey } | ConvertTo-Json -Depth 5
     }
-    "clean" { Invoke-Checked { docker compose --profile test down -v --rmi local } }
+    "tools" {
+        Invoke-Checked { docker compose --profile tools up -d adminer mongo-express redis-commander }
+        Write-Host "PostgreSQL (Adminer):    http://localhost:8080"
+        Write-Host "MongoDB (mongo-express): http://localhost:8081"
+        Write-Host "Redis (redis-commander): http://localhost:8082"
+    }
+    "tools-down" { Invoke-Checked { docker compose --profile tools stop adminer mongo-express redis-commander } }
+    "clean" { Invoke-Checked { docker compose --profile test --profile tools down -v --rmi local } }
 }

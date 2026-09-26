@@ -167,6 +167,12 @@ lanza un error:
 
 ### 2.8 `messaging.py` (el corazón de la mensajería)
 
+* `create_redis_client(url, block_ms=None)` (*factory*): crea el cliente Redis que usan los
+  servicios. Fija `socket_timeout = max(5, block_ms/1000 + 5)` segundos. Motivo: el consumidor
+  hace `XREADGROUP BLOCK 5000` y el servidor tarda hasta 5 s en responder si no hay mensajes; con
+  el timeout por defecto de redis-py 8 (también 5 s) el cliente cortaba la espera con
+  `TimeoutError`, el bucle lo trataba como "Redis caído" y aplicaba backoff de hasta 30 s,
+  retrasando los pedidos nuevos. `decode_responses=True` devuelve `str` en lugar de `bytes`.
 * `encode_envelope(envelope)`: convierte el evento en los campos planos de un mensaje de
   Redis (`event_id`, `event_type`, `trace_id` y `envelope` con el JSON completo).
 * `decode_envelope(fields)`: `EventEnvelope.model_validate_json(fields["envelope"])` parsea y
@@ -589,7 +595,7 @@ limpieza. `tasks.ps1` ofrece los mismos comandos en PowerShell para Windows sin 
 | Archivo | Qué demuestra |
 |---|---|
 | `shared/tests/test_retry.py` | Esperas 0.5/1/2 s, tope, jitter acotado, `PermanentError` sin reintentos, `RetryExhaustedError` |
-| `shared/tests/test_messaging.py` | Publicar → consumir → ACK; reintento transitorio; DLQ + hook; mensaje malformado; **reclamación de huérfanos** con `XAUTOCLAIM` (con `fakeredis`) |
+| `shared/tests/test_messaging.py` | Publicar → consumir → ACK; reintento transitorio; DLQ + hook; mensaje malformado; **reclamación de huérfanos** con `XAUTOCLAIM` (con `fakeredis`); timeout del cliente mayor que el bloqueo |
 | `shared/tests/test_logs.py` | Campos obligatorios del JSON y prioridad del `trace_id` |
 | `shared/tests/test_observability.py` | La métrica usa la plantilla de ruta; `X-Trace-Id` reutilizado; `/health` |
 | `orders-service/tests/test_schemas.py` | Validaciones y hash canónico |
