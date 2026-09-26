@@ -50,7 +50,7 @@ def _stack_running() -> None:
     """Salta todos los tests del módulo si el stack no está disponible."""
     for url in (ORDERS_URL, NOTIFIER_URL):
         if not _wait_until_healthy(url):
-            pytest.skip(f"service at {url} is not reachable; run `docker compose up` first")
+            pytest.skip(f"el servicio {url} no responde; ejecuta primero `docker compose up`")
 
 
 def _poll(fetch, predicate, timeout: float = TIMEOUT_SECONDS):  # type: ignore[no-untyped-def]
@@ -66,7 +66,7 @@ def _poll(fetch, predicate, timeout: float = TIMEOUT_SECONDS):  # type: ignore[n
         if predicate(last):
             return last
         time.sleep(1)
-    raise AssertionError(f"condition not met within {timeout}s; last value: {last!r}")
+    raise AssertionError(f"la condición no se cumplió en {timeout}s; último valor: {last!r}")
 
 
 def test_order_flows_end_to_end_until_notification() -> None:
@@ -111,6 +111,6 @@ def test_manual_cleanup_endpoint_keeps_recent_notifications() -> None:
     try:
         response = httpx.post(f"{CLEANUP_URL}/jobs/cleanup/run", headers=HEADERS, timeout=10)
     except httpx.HTTPError:
-        pytest.skip("cleanup-job is not reachable")
+        pytest.skip("cleanup-job no responde")
     assert response.status_code == 200
     assert response.json()["deleted"] >= 0

@@ -24,9 +24,9 @@ router = APIRouter(prefix="/orders", tags=["orders"], dependencies=[Depends(veri
     status_code=status.HTTP_201_CREATED,
     response_model=CreateOrderResponse,
     responses={
-        200: {"description": "Idempotent replay: order already created with this key"},
-        400: {"description": "Missing Idempotency-Key header"},
-        422: {"description": "Validation error or Idempotency-Key reused with another body"},
+        200: {"description": "Repetición idempotente: el pedido ya se creó con esta clave"},
+        400: {"description": "Falta la cabecera Idempotency-Key"},
+        422: {"description": "Error de validación o Idempotency-Key reutilizada con otro cuerpo"},
     },
 )
 async def create_order(
@@ -54,7 +54,7 @@ async def create_order(
     if idempotency_key is None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Idempotency-Key header is required",
+            detail="La cabecera Idempotency-Key es obligatoria",
         )
     result = await service.create_order(
         payload,

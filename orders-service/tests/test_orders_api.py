@@ -85,7 +85,7 @@ async def test_reusing_key_with_different_body_is_rejected(client: AsyncClient) 
 
     response = await client.post("/orders", json=other, headers=headers)
     assert response.status_code == 422
-    assert "different request body" in response.json()["detail"]
+    assert "cuerpo de petición distinto" in response.json()["detail"]
 
 
 async def test_missing_idempotency_key_is_rejected(client: AsyncClient) -> None:

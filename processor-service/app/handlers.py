@@ -90,7 +90,7 @@ class OrderProcessor:
         try:
             payload = OrderCreatedPayload.model_validate(envelope.payload)
         except ValidationError as exc:
-            raise PermanentError(f"invalid orders.created payload: {exc}") from exc
+            raise PermanentError(f"payload de orders.created no válido: {exc}") from exc
 
         # Comprobación rápida (sin bloqueo) para no "preparar" dos veces un
         # pedido cuyo evento ya se procesó. La comprobación definitiva se
@@ -120,7 +120,7 @@ class OrderProcessor:
         )
         await self._sleep(duration)
         if self._rng.random() < self._failure_rate:
-            raise TransientProcessingError("simulated barista failure")
+            raise TransientProcessingError("fallo simulado del barista")
 
     async def _complete(self, envelope: EventEnvelope, payload: OrderCreatedPayload) -> None:
         """Transacción: marca COMPLETED + inbox + outbox ``orders.completed``."""
@@ -130,7 +130,7 @@ class OrderProcessor:
             if order is None:
                 # Con el outbox el pedido siempre existe antes que su evento;
                 # si no está, el mensaje es incoherente: reintentar no ayuda.
-                raise PermanentError(f"order {payload.order_id} does not exist")
+                raise PermanentError(f"el pedido {payload.order_id} no existe")
             if await inbox.exists(envelope.event_id):
                 logger.info("duplicate_event_ignored", extra={"order_id": str(order.id)})
                 return

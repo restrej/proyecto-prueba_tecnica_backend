@@ -16,8 +16,8 @@ from cafe_common.tracing import new_trace_id, trace_context
 logger = logging.getLogger(__name__)
 
 # Métricas específicas del job.
-CLEANUP_RUNS_TOTAL = Counter("cleanup_runs_total", "Cleanup executions", ["result"])
-CLEANUP_DELETED_TOTAL = Counter("cleanup_deleted_notifications_total", "Notifications deleted")
+CLEANUP_RUNS_TOTAL = Counter("cleanup_runs_total", "Ejecuciones de limpieza", ["result"])
+CLEANUP_DELETED_TOTAL = Counter("cleanup_deleted_notifications_total", "Notificaciones borradas")
 
 
 class CleanupResult(BaseModel):

@@ -41,7 +41,7 @@ class RetryExhaustedError(Exception):
 
     def __init__(self, attempts: int, last_error: BaseException) -> None:
         """Crea el error con el contexto del último fallo."""
-        super().__init__(f"operation failed after {attempts} attempts: {last_error!r}")
+        super().__init__(f"la operación falló tras {attempts} intentos: {last_error!r}")
         self.attempts = attempts
         self.last_error = last_error
 
@@ -67,11 +67,11 @@ class RetryPolicy:
     def __post_init__(self) -> None:
         """Valida los parámetros al construir la política (fail fast)."""
         if self.max_attempts < 1:
-            raise ValueError("max_attempts must be >= 1")
+            raise ValueError("max_attempts debe ser >= 1")
         if self.base_delay < 0 or self.max_delay < 0:
-            raise ValueError("delays must be >= 0")
+            raise ValueError("los tiempos de espera deben ser >= 0")
         if self.multiplier < 1:
-            raise ValueError("multiplier must be >= 1")
+            raise ValueError("multiplier debe ser >= 1")
 
     def backoff(self, attempt: int) -> float:
         """Calcula cuánto esperar después del intento fallido ``attempt``.

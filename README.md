@@ -200,7 +200,7 @@ curl -s -H "X-API-Key: cafe-cloud-dev-key" http://localhost:8003/notifications/a
     "id": "6a0e2f7c-4b1d-4c55-9a55-2f0f8a3b9d11",
     "order_id": "ba7549ca-c576-4912-9def-c78894cef9e3",
     "customer_id": "abc123",
-    "message": "Your order ba7549ca-c576-4912-9def-c78894cef9e3 is ready: 1x latte, 2x muffin. Enjoy! ☕",
+    "message": "Tu pedido ba7549ca-c576-4912-9def-c78894cef9e3 está listo: 1x latte, 2x muffin. ¡Que lo disfrutes! ☕",
     "items": [{"name": "latte", "qty": 1}, {"name": "muffin", "qty": 2}],
     "trace_id": "07f6e728903e4f46a0441713b336e84b",
     "created_at": "2026-09-24T10:15:34.512000Z"

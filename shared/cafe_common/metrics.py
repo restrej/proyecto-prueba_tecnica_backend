@@ -14,27 +14,27 @@ from prometheus_client import Counter, Histogram  # tipos de métrica
 # para no crear una serie temporal por cada cliente (explosión de cardinalidad).
 HTTP_REQUESTS_TOTAL = Counter(
     "http_requests_total",
-    "Total HTTP requests handled",
+    "Total de peticiones HTTP atendidas",
     ["method", "path", "status"],
 )
 
 # Latencia de las peticiones HTTP (histograma -> permite percentiles p50/p95/p99).
 HTTP_REQUEST_DURATION_SECONDS = Histogram(
     "http_request_duration_seconds",
-    "HTTP request latency in seconds",
+    "Latencia de las peticiones HTTP en segundos",
     ["method", "path"],
 )
 
 # Eventos publicados en el broker, por stream.
 EVENTS_PUBLISHED_TOTAL = Counter(
     "events_published_total",
-    "Events published to the message broker",
+    "Eventos publicados en el broker de mensajería",
     ["stream"],
 )
 
 # Eventos consumidos por stream y resultado (success / duplicate / dead_letter).
 EVENTS_CONSUMED_TOTAL = Counter(
     "events_consumed_total",
-    "Events consumed from the message broker",
+    "Eventos consumidos del broker de mensajería",
     ["stream", "result"],
 )

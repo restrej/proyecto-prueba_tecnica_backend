@@ -332,7 +332,7 @@ class RedisStreamConsumer:
             deliveries = await self._delivery_count(message_id)
             if deliveries > self._settings.max_deliveries:
                 await self._dead_letter(
-                    message_id, fields, f"max deliveries exceeded ({deliveries})"
+                    message_id, fields, f"superado el máximo de entregas ({deliveries})"
                 )
             else:
                 logger.warning(
@@ -365,7 +365,7 @@ class RedisStreamConsumer:
             envelope = decode_envelope(fields)
         except (KeyError, ValueError, ValidationError) as exc:
             # Mensaje corrupto: reintentar nunca funcionará -> DLQ directo.
-            await self._dead_letter(message_id, fields, f"malformed message: {exc!r}")
+            await self._dead_letter(message_id, fields, f"mensaje malformado: {exc!r}")
             return
 
         # Todo lo que se loguee dentro del with lleva el trace_id del evento.

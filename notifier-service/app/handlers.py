@@ -41,14 +41,14 @@ class NotificationHandler:
         try:
             payload = OrderCompletedPayload.model_validate(envelope.payload)
         except ValidationError as exc:
-            raise PermanentError(f"invalid orders.completed payload: {exc}") from exc
+            raise PermanentError(f"payload de orders.completed no válido: {exc}") from exc
 
         summary = ", ".join(f"{item.qty}x {item.name}" for item in payload.items)
         notification = Notification(
             id=str(envelope.event_id),  # clave de idempotencia
             order_id=str(payload.order_id),
             customer_id=payload.customer_id,
-            message=f"Your order {payload.order_id} is ready: {summary}. Enjoy! ☕",
+            message=f"Tu pedido {payload.order_id} está listo: {summary}. ¡Que lo disfrutes! ☕",
             items=payload.items,
             trace_id=envelope.trace_id,
             created_at=self._clock(),

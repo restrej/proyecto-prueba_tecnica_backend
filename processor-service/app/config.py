@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     def _check_processing_range(self) -> Settings:
         """Valida que el rango de simulación sea coherente (min <= max)."""
         if self.processing_min_seconds > self.processing_max_seconds:
-            raise ValueError("PROCESSING_MIN_SECONDS must be <= PROCESSING_MAX_SECONDS")
+            raise ValueError("PROCESSING_MIN_SECONDS debe ser <= PROCESSING_MAX_SECONDS")
         return self
 
     def retry_policy(self) -> RetryPolicy:

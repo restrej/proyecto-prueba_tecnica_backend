@@ -19,7 +19,7 @@ class IdempotencyKeyReuseError(OrdersError):
 
     def __init__(self, key: str) -> None:
         """Guarda la clave conflictiva para el mensaje de error."""
-        super().__init__(f"Idempotency-Key '{key}' was already used with a different request body")
+        super().__init__(f"La Idempotency-Key '{key}' ya se usó con un cuerpo de petición distinto")
         self.key = key
 
 
@@ -28,5 +28,5 @@ class OrderNotFoundError(OrdersError):
 
     def __init__(self, order_id: UUID) -> None:
         """Guarda el id buscado para el mensaje de error."""
-        super().__init__(f"Order '{order_id}' not found")
+        super().__init__(f"No existe el pedido '{order_id}'")
         self.order_id = order_id

@@ -71,7 +71,7 @@ async def test_permanent_error_is_not_retried() -> None:
 
     async def invalid() -> None:
         """Operación que falla con un error permanente (no debe reintentarse)."""
-        raise PermanentError("bad payload")
+        raise PermanentError("payload no válido")
 
     with pytest.raises(PermanentError):
         await retry_async(invalid, RetryPolicy(), sleep=sleep)

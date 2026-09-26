@@ -41,6 +41,6 @@ async def verify_api_key(
     if provided_key is None or not secrets.compare_digest(provided_key, expected_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key",
+            detail="API key no válida o ausente",
             headers={"WWW-Authenticate": "ApiKey"},
         )

@@ -91,7 +91,7 @@ async def test_permanent_failure_goes_to_dead_letter_and_hook_runs(
 
     async def broken(_: EventEnvelope) -> None:
         """Handler que siempre lanza un error permanente (no reintentable)."""
-        raise PermanentError("cannot process")
+        raise PermanentError("no se puede procesar")
 
     async def on_dead_letter(envelope: EventEnvelope, _: BaseException) -> None:
         """Hook de dead-letter: anota el trace_id del mensaje enviado a la DLQ."""
@@ -104,7 +104,7 @@ async def test_permanent_failure_goes_to_dead_letter_and_hook_runs(
 
     dlq = await redis.xrange(dead_letter_stream(STREAM))
     assert len(dlq) == 1
-    assert "cannot process" in dlq[0][1]["error"]
+    assert "no se puede procesar" in dlq[0][1]["error"]
     assert hooked == ["t7"]
     assert (await redis.xpending(STREAM, "g"))["pending"] == 0
 
@@ -114,7 +114,7 @@ async def test_malformed_message_goes_to_dead_letter(redis: FakeAsyncRedis) -> N
 
     async def handler(_: EventEnvelope) -> None:  # pragma: no cover - no se llama
         """Handler que no debe ejecutarse: el mensaje malformado se descarta antes."""
-        raise AssertionError("handler must not be called")
+        raise AssertionError("el handler no debe llamarse")
 
     consumer = RedisStreamConsumer(redis, _settings(), handler)
     await consumer.ensure_group()
